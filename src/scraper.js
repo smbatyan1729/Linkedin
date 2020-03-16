@@ -2,7 +2,7 @@ const cheerio = require('cheerio');
 const fs = require('fs');
 const request = require('request-promise');
 const Entities = require('html-entities').XmlEntities;
- 
+
 const config = require('../config');
 const debugFile = './assets/debug.json';
 const logger = require('@coya/logger')();
@@ -22,6 +22,7 @@ function buildCookiesJar() {
 }
 
 function processPeopleProfile(item, result) {
+
 	if (item.$type == 'com.linkedin.voyager.dash.common.Industry' && item.name)
 		industries[item.entityUrn] = item.name;
 	if (item.$type == 'com.linkedin.voyager.dash.identity.profile.Profile' && item.objectUrn) {
@@ -36,6 +37,11 @@ function processPeopleProfile(item, result) {
 			result.birthDate = item.birthDate;
 			delete result.birthDate.$type;
 		}
+    if (item.profilePicture) {
+      profilePictureReferance = item.profilePicture.displayImageReference;
+      vectorImage = profilePictureReferance.vectorImage;
+      result.profilePicture = vectorImage.rootUrl + vectorImage.artifacts[2].fileIdentifyingUrlPathSegment;
+    }
 	} else if (item.$type == 'com.linkedin.voyager.common.FollowingInfo' && item.followerCount)
 		result.connections = item.followerCount;
 	else if (item.$type == 'com.linkedin.voyager.dash.identity.profile.Position') {
@@ -113,7 +119,7 @@ async function getCompanyOrPeopleDetails(url) {
 	if(process.env.NODE_ENV == 'dev')
 		fs.writeFileSync(debugFile, '');
 
-	logger.info(`Sending request to ${url}...`);
+	// logger.info(`Sending request to ${url}...`);
 	const html = await request({ url, jar });
 	const $ = cheerio.load(html);
 	let data, result = { linkedinUrl: url.replace('/about/', '') };
@@ -133,7 +139,6 @@ async function getCompanyOrPeopleDetails(url) {
 					fs.appendFileSync(debugFile, JSON.stringify(item, null, 4) + '\n');
 			}
 		}
-
 		// this company or people does not exist
 		if (!result.firstName && !result.name)
 			return null;
